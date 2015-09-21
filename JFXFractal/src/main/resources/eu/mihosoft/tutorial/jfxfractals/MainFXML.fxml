@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.canvas.*?>
+<?import java.lang.*?>
+<?import java.net.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane id="AnchorPane" prefHeight="600.0" prefWidth="800.0" styleClass="mainFxmlClass" xmlns="http://javafx.com/javafx/8.0.40" xmlns:fx="http://javafx.com/fxml/1" fx:controller="eu.mihosoft.tutorial.jfxfractals.MainFXMLController">
+    <stylesheets>
+        <URL value="@mainfxml.css" />
+    </stylesheets>
+<children><SplitPane dividerPositions="0.725" focusTraversable="true" layoutX="200.0" layoutY="120.0" prefHeight="400.0" prefWidth="600.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+  <items>
+    <AnchorPane fx:id="root" minHeight="0.0" minWidth="0.0" prefHeight="160.0" prefWidth="100.0" />
+    <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="160.0" prefWidth="100.0">
+<children><Accordion layoutX="-47.0" layoutY="121.0" prefHeight="398.0" prefWidth="145.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+  <panes>
+    <TitledPane animated="false" text="Constants &amp; Iterations">
+      <content>
+        <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
+<children><VBox layoutX="25.0" layoutY="91.0" prefHeight="519.0" prefWidth="213.0" spacing="5.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+<children><HBox prefWidth="200.0" VBox.vgrow="NEVER">
+<children><Label prefWidth="105.0" text="a:=" /><TextField fx:id="aField" alignment="CENTER_RIGHT" text="-3.14" HBox.hgrow="SOMETIMES" />
+</children></HBox>
+<HBox layoutX="10.0" layoutY="10.0" prefWidth="200.0">
+<children>
+<Label prefWidth="105.0" text="b:=" />
+<TextField fx:id="bField" alignment="CENTER_RIGHT" text="0.32" HBox.hgrow="SOMETIMES" />
+</children>
+</HBox>
+<HBox layoutX="10.0" layoutY="110.0" prefWidth="200.0">
+<children>
+<Label prefWidth="105.0" text="c:=" />
+<TextField fx:id="cField" alignment="CENTER_RIGHT" text="0.32" HBox.hgrow="SOMETIMES" />
+</children>
+</HBox>
+<HBox layoutX="10.0" layoutY="210.0" prefWidth="200.0">
+<children>
+<Label prefWidth="105.0" text="#Iterations" />
+<TextField fx:id="iterField" alignment="CENTER_RIGHT" text="1000000" HBox.hgrow="SOMETIMES" />
+</children>
+</HBox>
+                                          <HBox layoutX="10.0" layoutY="72.0" prefWidth="200.0">
+                                             <children>
+                                                <Label prefWidth="105.0" text="scale x:" />
+                                                <TextField fx:id="sxField" alignment="CENTER_RIGHT" text="10" HBox.hgrow="SOMETIMES" />
+                                             </children>
+                                          </HBox>
+                                          <HBox layoutX="10.0" layoutY="215.0" prefWidth="200.0">
+                                             <children>
+                                                <Label prefWidth="105.0" text="scale y:" />
+                                                <TextField fx:id="syField" alignment="CENTER_RIGHT" text="10" HBox.hgrow="SOMETIMES" />
+                                             </children>
+                                          </HBox>
+                                          <HBox layoutX="10.0" layoutY="165.0">
+                                             <children>
+                                                <Label prefWidth="105.0" />
+                                                <CheckBox fx:id="aspectRatio" minWidth="125.0" mnemonicParsing="false" selected="true" text="Aspect Ratio" />
+                                             </children>
+                                          </HBox>
+                                          <HBox prefWidth="200.0">
+                                             <children>
+                                                <Label prefWidth="105.0" text="transl.x:" />
+                                                <TextField fx:id="txField" alignment="CENTER_RIGHT" text="0" HBox.hgrow="SOMETIMES" />
+                                             </children>
+                                          </HBox>
+                                          <HBox prefWidth="200.0">
+                                             <children>
+                                                <Label prefWidth="105.0" text="transl.y:" />
+                                                <TextField fx:id="tyField" alignment="CENTER_RIGHT" text="0" HBox.hgrow="SOMETIMES" />
+                                             </children>
+                                          </HBox>
+                                          <StackPane prefWidth="200.0">
+                                             <children>
+                                                <Button fx:id="runBtn" alignment="CENTER" mnemonicParsing="false" prefWidth="80.0" text="Run" />
+                                             </children>
+                                             <VBox.margin>
+                                                <Insets top="50.0" />
+                                             </VBox.margin>
+                                          </StackPane>
+</children></VBox>
+</children></AnchorPane>
+      </content>
+    </TitledPane>
+    <TitledPane animated="false" expanded="false" text="I/O">
+      <content>
+        <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" />
+      </content>
+    </TitledPane>
+    <TitledPane animated="false" expanded="false" text="...">
+      <content>
+        <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" />
+      </content>
+    </TitledPane>
+  </panes>
+</Accordion>
+</children></AnchorPane>
+  </items>
+</SplitPane>
+</children>
+</AnchorPane>
