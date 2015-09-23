@@ -5,25 +5,42 @@
  */
 package eu.mihosoft.tutorial.jfxfractals;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.util.Random;
 import java.util.ResourceBundle;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javafx.animation.AnimationTimer;
+import javafx.application.Platform;
+import javafx.beans.binding.DoubleBinding;
 import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleLongProperty;
+import javafx.embed.swing.SwingFXUtils;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
+import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
-import javafx.scene.transform.Scale;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
+import javax.imageio.ImageIO;
 
 /**
  * FXML Controller class
@@ -37,6 +54,7 @@ public class MainFXMLController implements Initializable {
      */
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+
         canvas = new FractCanvas();
         canvas.setWidth(100);
         canvas.setHeight(100);
@@ -107,13 +125,34 @@ public class MainFXMLController implements Initializable {
             syField.setText("" + canvas.getScaleYProperty().get());
         });
 
+        canvas.getModuloProperty().bindBidirectional(moduloSlider.valueProperty());
+
         runBtn.setOnMouseClicked((evt) -> {
             canvas.redraw();
+        });
+
+        progressBar.progressProperty().bind(new DoubleBinding() {
+
+            {
+                super.bind(canvas.getCurrentIterationProperty());
+            }
+
+            @Override
+            protected double computeValue() {
+
+                double value = canvas.getCurrentIterationProperty().get()
+                        / (double) (canvas.getIterationProperty().get());
+
+                return value;
+            }
         });
 
     }
 
     FractCanvas canvas;
+
+    @FXML
+    TitledPane mainPropertiesTab;
 
     @FXML
     AnchorPane root;
@@ -139,6 +178,42 @@ public class MainFXMLController implements Initializable {
 
     @FXML
     CheckBox aspectRatio;
+
+    @FXML
+    Slider moduloSlider;
+
+    @FXML
+    ProgressBar progressBar;
+
+    @FXML
+    void onSaveImage(ActionEvent e) {
+        File imgFile = selectSaveFile(null, "PNG Files (*.png)", "png", null);
+        FractCanvas newCanvas = new FractCanvas(canvas);
+        double factor = 2;
+        newCanvas.getScaleXProperty().set(newCanvas.getScaleXProperty().get() * factor);
+        newCanvas.getScaleYProperty().set(newCanvas.getScaleYProperty().get() * factor);
+        newCanvas.setWidth(canvas.getWidth() * factor);
+        newCanvas.setHeight(canvas.getHeight() * factor);
+        newCanvas.draw(imgFile, (int) newCanvas.getWidth(), (int) canvas.getHeight());
+    }
+
+    public static File selectSaveFile(Window mainWindow, String description, String ending, File initDir) {
+        FileChooser fileChooser = new FileChooser();
+        if (initDir != null) {
+            fileChooser.setInitialDirectory(initDir);
+        }
+        //Set extension filter
+        FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter(description, "*." + ending);
+        fileChooser.getExtensionFilters().add(extFilter);
+        //Show save file dialog
+        File file = fileChooser.showSaveDialog(mainWindow);
+
+        if (!file.getName().toLowerCase().endsWith(ending)) {
+            file = new File(file.getAbsolutePath() + "." + ending);
+        }
+
+        return file;
+    }
 }
 
 class FractCanvas extends ResizableCanvas {
@@ -158,10 +233,16 @@ class FractCanvas extends ResizableCanvas {
 
     private final LongProperty iterationProperty = new SimpleLongProperty();
 
+    private final LongProperty currentIterationProperty = new SimpleLongProperty();
+
+    private final IntegerProperty moduloProperty = new SimpleIntegerProperty(4);
+
     private double initialMouseX;
     private double initialMouseY;
     private double initialTx;
     private double initialTy;
+
+    private final AtomicLong currentIteration = new AtomicLong();
 
     public FractCanvas() {
         aProperty.addListener(ov -> draw());
@@ -172,6 +253,8 @@ class FractCanvas extends ResizableCanvas {
         translateXProperty.addListener(ov -> draw());
         translateYProperty.addListener(ov -> draw());
         iterationProperty.addListener(ov -> draw());
+
+        moduloProperty.addListener((ov) -> draw());
 
         setOnMousePressed((evt) -> {
 
@@ -205,12 +288,30 @@ class FractCanvas extends ResizableCanvas {
         });
     }
 
+    public FractCanvas(FractCanvas other) {
+        aProperty.set(other.aProperty.get());
+        bProperty.set(other.bProperty.get());
+        cProperty.set(other.cProperty.get());
+        translateXProperty.set(other.translateXProperty.get());
+        translateYProperty.set(other.translateYProperty.get());
+        scaleXProperty.set(other.scaleXProperty.get());
+        scaleYProperty.set(other.scaleYProperty.get());
+        iterationProperty.set(other.iterationProperty.get());
+        moduloProperty.set(other.moduloProperty.get());
+    }
+
     public void redraw() {
         draw();
     }
 
     @Override
     protected void draw() {
+        draw(null, 0, 0);
+    }
+
+    protected void draw(final File imgFile, final int w, final int h) {
+
+        currentIterationProperty.set(0);
 
         if (t != null) {
             t.interrupt();
@@ -224,7 +325,24 @@ class FractCanvas extends ResizableCanvas {
             return;
         }
 
-        WritableImage img = new WritableImage((int) (getWidth() * 2), (int) (getHeight()) * 2);
+        WritableImage img;
+
+        if (imgFile != null) {
+            img = new WritableImage(
+                    (int) getWidth() * 2, (int) getHeight() * 2);
+        } else {
+            img = new WritableImage(
+                    (int) (getWidth() * 2), (int) (getHeight()) * 2);
+        }
+
+        PixelWriter pw = img.getPixelWriter();
+//        
+//        
+//        for (int imgY = 0; imgY < img.getHeight(); imgY++) {
+//            for (int imgX = 0; imgX < img.getWidth(); imgX++) {
+//                pw.setColor(imgX, imgY, Color.BLACK);
+//            }
+//        }
 
         GraphicsContext g2 = getGraphicsContext2D();
 
@@ -236,11 +354,28 @@ class FractCanvas extends ResizableCanvas {
             @Override
             public void handle(long now) {
                 g2.drawImage(img, 0, 0, getWidth(), getHeight());
+                currentIterationProperty.set(currentIteration.get());
             }
         };
+
         timer.start();
 
-        Color[] colors = {Color.BLUE, Color.RED, Color.GREEN, Color.YELLOW};
+        Color[] colors = {
+            Color.BLUE,
+            Color.RED,
+            Color.GREEN,
+            Color.YELLOW,
+            Color.WHITE,
+            Color.ORANGE,
+            Color.VIOLET,
+            Color.CADETBLUE,
+            Color.BISQUE,
+            Color.YELLOWGREEN,
+            Color.DARKTURQUOISE,
+            Color.DARKRED,
+            Color.DEEPPINK,
+            Color.GOLDENROD
+        };
 
         t = new Thread(() -> {
 
@@ -248,11 +383,14 @@ class FractCanvas extends ResizableCanvas {
             double a = getaProperty().get(),
                     b = getbProperty().get(),
                     c = getcProperty().get(), x = 0, y = 0;
+
             for (long i = 0; i < getIterationProperty().get(); i++) {
 
                 if (t.isInterrupted()) {
                     break;
                 }
+
+                currentIteration.set(i);
 
                 double imgScaleX = img.getWidth() / getWidth();
                 double imgScaleY = img.getHeight() / getHeight();
@@ -263,36 +401,50 @@ class FractCanvas extends ResizableCanvas {
                 double tx = translateXProperty.get();
                 double ty = translateYProperty.get();
 
-                final double finalX = tx * sx * imgScaleX + x * sx + img.getWidth() * 0.5;
-                final double finalY = ty * sy * imgScaleY + y * sy + img.getHeight() * 0.5;
+                final double finalX = tx * sx * imgScaleX
+                        + x * sx + img.getWidth() * 0.5;
+                final double finalY = ty * sy * imgScaleY
+                        + y * sy + img.getHeight() * 0.5;
                 final long finalI = i;
 
-                if (finalX >= 0 && finalX < img.getWidth() && finalY >= 0 && finalY < img.getHeight()) {
-                    Color color = colors[(int) (finalI % colors.length)];
+                if (finalX >= 0 && finalX < img.getWidth()
+                        && finalY >= 0 && finalY < img.getHeight()) {
 
-//                    Color color = new Color(
-//                        0.3 * (i % 255) / 255.0,
-//                        0.8*(i % 255) / 255.0,
-//                        0.3 * (i % 255) / 255.0, 1.0);
-                    img.getPixelWriter().setColor((int) finalX, (int) finalY, color);
+                    Color color;
+
+                    if (moduloProperty.get() > colors.length
+                            || moduloProperty.get() == 0) {
+                        color = Color.WHITE;
+                    } else {
+                        color = colors[(int) (finalI % moduloProperty.get())];
+                    }
+
+                    pw.setColor(
+                            (int) finalX, (int) finalY, color);
                 }
 
-//                g2.setFill(colors[finalI % colors.length]);
-//
-////                g2.setFill(new Color(
-////                        1.0 * (i % 255) / 255.0,
-////                        (i % 255) / 255.0,
-////                        1.0 * (i % 255) / 255.0, 1.0));
-//                g2.fillRect(
-//                        finalX * 10 + getWidth() * 0.5,
-//                        finalY * 10 + getHeight() * 0.5, 0.25, 0.25);
                 double xx = y - Math.signum(x) * Math.sqrt(Math.abs(b * x - c));
                 double yy = a - x;
                 x = xx * (1.0d + r.nextDouble() * 0.00000001d);
                 y = yy * (1.0d + r.nextDouble() * 0.00000001d);
+            } // end for
+
+            if (imgFile != null) {
+
+                Platform.runLater(() -> {
+
+                    WritableImage wImg = snapshot(null, null);
+                    try {
+                        ImageIO.write(SwingFXUtils.fromFXImage(wImg, null),
+                                "png", imgFile);
+                    } catch (IOException ex) {
+                        Logger.getLogger(MainFXMLController.class.getName()).
+                                log(Level.SEVERE, null, ex);
+                    }
+                });
+
             }
-        }
-        );
+        });
 
         t.start();
     }
@@ -351,6 +503,20 @@ class FractCanvas extends ResizableCanvas {
      */
     public DoubleProperty getTranslateYProperty() {
         return translateYProperty;
+    }
+
+    /**
+     * @return the moduloProperty
+     */
+    public IntegerProperty getModuloProperty() {
+        return moduloProperty;
+    }
+
+    /**
+     * @return the currentIterationProperty
+     */
+    public LongProperty getCurrentIterationProperty() {
+        return currentIterationProperty;
     }
 
 }
